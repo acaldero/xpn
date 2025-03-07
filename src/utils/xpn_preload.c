@@ -1,6 +1,6 @@
 
 /*
- *  Copyright 2020-2024 Felix Garcia Carballeira, Diego Camarmas Alonso, Alejandro Calderon Mateos
+ *  Copyright 2020-2025 Felix Garcia Carballeira, Diego Camarmas Alonso, Alejandro Calderon Mateos, Dario Muñoz Muñoz
  *
  *  This file is part of Expand.
  *
@@ -32,6 +32,7 @@
   #include <sys/stat.h>
   #include <dirent.h>
   #include "mpi.h"
+  #include "xpn/xpn_simple/xpn_policy_rw.h"
 
 
 /* ... Const / Const ................................................. */
@@ -51,39 +52,56 @@
   char src_path [PATH_MAX+5];
   char dest_path [PATH_MAX+5];
 
+  int xpn_path_len = 0;
 
 /* ... Functions / Funciones ......................................... */
 
-  int copy(char * entry, int is_file, char * dir_name, char * dest_prefix, int blocksize, int rank, int size)
+  int copy(char * entry, int is_file, char * dir_name, char * dest_prefix, int blocksize, int replication_level, int rank, int size)
   {  
+    debug_info("entry %s is_file %d dir_name %s dest_prefix %s blocksize %d replication_level %d rank %d size %d \n",entry, is_file, dir_name, dest_prefix, blocksize, replication_level, rank, size);
     int  ret;
 
     int fd_src, fd_dest;
     char *buf ;
     int buf_len;
     off64_t offset_src ;
-    int cont, cont2 ;
+    off64_t ret_2;
+    off_t local_offset;
+    off_t local_size = 0;
+    int local_server;
+    int i;
+    ssize_t read_size, write_size;
+    struct stat st;
 
-    printf("=");
-    
-    buf = (char *) malloc(blocksize + 1) ;
+    //Alocate buffer
+    buf_len = blocksize;
+    buf = (char *) malloc(blocksize ) ;
     if (NULL == buf) {
       perror("malloc: ");
       return -1;
     }
 
     //Generate source path
-    //sprintf( src_path, "%s/%s", argv[1], entry );
     strcpy(src_path, entry);
 
     //Generate destination path
     char * aux_entry = entry + strlen(dir_name);
     sprintf( dest_path, "%s/%s", dest_prefix, aux_entry );
 
+    if (rank == 0){
+      printf("%s -> %s\n", src_path, dest_path);
+    }
+
+    ret = stat(src_path, &st);
+    if (ret < 0){
+      perror("stat: ");
+      free(buf) ;
+      return -1;
+    }
     if (!is_file)
     {
-      ret = mkdir(dest_path, 0755);
-      if ( ret < 0 )
+      ret = mkdir(dest_path, st.st_mode);
+      if ( ret < 0 && errno != EEXIST)
       {
         perror("mkdir: ");
         free(buf) ;
@@ -95,60 +113,110 @@
       fd_src = open64(src_path, O_RDONLY | O_LARGEFILE);
       if ( fd_src < 0 )
       {
-        perror("open 2: ");
-        free(buf) ;
-        return -1;
-      }
-
-      fd_dest = open64(dest_path, O_CREAT | O_WRONLY | O_TRUNC | O_LARGEFILE, 0755);
-      if ( fd_dest < 0 )
-      {
         perror("open 1: ");
         free(buf) ;
         return -1;
       }
 
+      fd_dest = open64(dest_path, O_CREAT | O_WRONLY | O_TRUNC | O_LARGEFILE, st.st_mode);
+      if ( fd_dest < 0 )
+      {
+        perror("open 2: ");
+        free(buf) ;
+        return -1;
+      }
+
       // Write header
+      struct xpn_metadata mdata;
+      XpnCreateMetadataExtern(&mdata, dest_path, size, blocksize, replication_level);
+
       char header_buf [HEADER_SIZE];
       memset(header_buf, 0, HEADER_SIZE);
-      ret = write(fd_dest, header_buf, HEADER_SIZE);
+      write_size = filesystem_write(fd_dest, header_buf, HEADER_SIZE);
+      if (write_size != HEADER_SIZE){
+        perror("write: ");
+        free(buf) ;
+        return -1;
+      }
 
-      offset_src = rank * blocksize ;
+      offset_src = 0;
       do
       { 
-        off64_t ret_2;
-        ret_2 = lseek64(fd_src, offset_src, SEEK_SET) ;
-        if (ret_2 < 0) {
-          //perror("lseek: ");
+        for (i = 0; i <= replication_level; i++)
+        {
+          XpnCalculateBlockMdata(&mdata, offset_src, i, &local_offset, &local_server);
+
+          if (local_server == rank)
+          {
+            ret_2 = lseek64(fd_src, offset_src, SEEK_SET) ;
+            if (ret_2 < 0) {
+              perror("lseek: ");
+              goto finish_copy;
+            }
+            ret_2 = lseek64(fd_dest, local_offset+HEADER_SIZE, SEEK_SET) ;
+            if (ret_2 < 0) {
+              perror("lseek: ");
+              goto finish_copy;
+            }
+
+            read_size = filesystem_read(fd_src, buf, buf_len);
+            if (read_size <= 0){
+              goto finish_copy;
+            }
+            write_size = filesystem_write(fd_dest, buf, read_size);
+            if (write_size != read_size){
+              perror("write: ");
+              goto finish_copy;
+            }
+            local_size += write_size;
+          }
+        }
+        
+        offset_src+=blocksize;
+      }
+      while(write_size > 0);
+
+finish_copy:
+      // Update file size
+      mdata.file_size = st.st_size;
+      // Write mdata only when necesary
+      int write_mdata = 0;
+      int master_dir = hash(&dest_path[xpn_path_len], size, 0);
+      int has_master_dir = 0;
+      int aux_serv;
+      for (int i = 0; i < replication_level+1; i++)
+      { 
+        aux_serv = ( mdata.first_node + i ) % size;
+        if (aux_serv == rank){
+          write_mdata = 1;
           break;
         }
-
-        cont = 0;
-        buf_len = blocksize;
-        memset(buf, 0, buf_len);
-        do {
-          ret = read(fd_src, buf + cont, buf_len);
-          cont    = cont + ret ;
-          buf_len = buf_len - ret ;
-        } while ( (cont < buf_len) && (ret != 0) );
-
-        cont2 = 0;
-        buf_len = cont;
-        do {
-          ret = write(fd_dest, buf + cont2, buf_len);
-          cont2    = cont2 + ret ;
-          buf_len  = buf_len - ret ;
-        } while ( (cont2 < cont) && (ret != 0) );
-
-        //printf("rank %d; ret: %d; offset %ld; nodes %d; blocksize %d\n", rank, ret, offset_src, size, blocksize);
-        //printf("Buf: %s\n", buf);
-
-        offset_src = offset_src + (size * blocksize) ;
       }
-      while(cont > 0);
+      for (int i = 0; i < replication_level+1; i++)
+      { 
+        aux_serv = ( master_dir + i ) % size;
+        if (aux_serv == rank){
+          has_master_dir = 1;
+          break;
+        }
+      }
+      
+      if (write_mdata == 1){
+        ret_2 = lseek64(fd_dest, 0, SEEK_SET);
+        write_size = filesystem_write(fd_dest, &mdata, sizeof(struct xpn_metadata));
+        if (write_size != sizeof(struct xpn_metadata)){
+          perror("write: ");
+          free(buf) ;
+          return -1;
+        }
+        local_size += write_size;
+      }
 
-      close(fd_src);
-      close(fd_dest);
+      filesystem_close(fd_src);
+      filesystem_close(fd_dest);
+      if (local_size == 0 && has_master_dir == 0){
+        filesystem_unlink(dest_path);
+      }
     }
     
     free(buf);
@@ -156,7 +224,7 @@
   }
 
 
-  int list (char * dir_name, char * dest_prefix, int blocksize, int rank, int size)
+  int list (char * dir_name, char * dest_prefix, int blocksize, int replication_level, int rank, int size)
   {
     int ret;
     DIR* dir = NULL;
@@ -166,7 +234,7 @@
     dir = opendir(dir_name);
     if(dir == NULL)
     {
-      perror("opendir:");
+      fprintf(stderr, "opendir error %s %s\n", dir_name, strerror(errno));
       return -1;
     }
     
@@ -197,13 +265,13 @@
       }
 
       int is_file = !S_ISDIR(stat_buf.st_mode);
-      copy(path, is_file, dir_name, dest_prefix, blocksize, rank, size);
+      copy(path, is_file, dir_name, dest_prefix, blocksize, replication_level, rank, size);
 
       if (S_ISDIR(stat_buf.st_mode))
       {
         char path_dst [PATH_MAX];
         sprintf(path_dst, "%s/%s", dest_prefix, entry->d_name);
-        list(path, path_dst, blocksize, rank, size);
+        list(path, path_dst, blocksize, replication_level, rank, size);
       }
 
       entry = readdir(dir);
@@ -218,27 +286,40 @@
   int main(int argc, char *argv[])
   {   
     int rank, size;
-
+    int replication_level = 0;
+    int blocksize = 524288;
+    double start_time;
     //
     // Check arguments...
     //
-    if ( argc < 4 )
+    if ( argc < 3 )
     {
       printf("Usage:\n");
-      printf(" ./%s <origin partition> <destination local path> <destination block size>\n", argv[0]);
+      printf(" ./%s <origin partition> <destination local path> <optional destination block size> <optional replication level>\n", argv[0]);
       printf("\n");
       return -1;
     }
-
+    
+    if ( argc >= 5){
+      replication_level = atoi(argv[4]);
+    }
+    if ( argc >= 4){
+      blocksize = atoi(argv[3]);
+    }
+    
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
-
-    printf("Copying... \n");
-    list (argv[1], argv[2], atoi(argv[3]), rank, size);
-    printf("\n");
-
+    start_time = MPI_Wtime();
+    if (rank == 0){
+      printf("Copying from %s to %s blocksize %d replication_level %d \n", argv[1], argv[2], blocksize, replication_level);
+    }
+    xpn_path_len = strlen(argv[2]);
+    list (argv[1], argv[2], blocksize, replication_level, rank, size);
     MPI_Barrier(MPI_COMM_WORLD);
+    if (rank == 0){
+      printf("Preload elapsed time %f mseg\n", (MPI_Wtime() - start_time)*1000);
+    }
     MPI_Finalize();
 
     return 0;

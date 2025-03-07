@@ -1,6 +1,6 @@
 
   /*
-   *  Copyright 2020-2024 Felix Garcia Carballeira, Diego Camarmas Alonso, Alejandro Calderon Mateos
+   *  Copyright 2020-2025 Felix Garcia Carballeira, Diego Camarmas Alonso, Alejandro Calderon Mateos
    *
    *  This file is part of Expand.
    *
@@ -142,9 +142,6 @@ int nfi_nfs_init(char *url, struct nfi_server *serv, __attribute__((__unused__))
 
 	serv->ops->nfi_reconnect  = nfi_nfs_reconnect;
 	serv->ops->nfi_disconnect = nfi_nfs_disconnect;
-
-	serv->ops->nfi_preload	= NULL;
-	serv->ops->nfi_flush	= NULL;
 
 	serv->ops->nfi_getattr	= nfi_nfs_getattr;
 	serv->ops->nfi_setattr	= nfi_nfs_setattr;

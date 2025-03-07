@@ -1,6 +1,6 @@
 
 /*
- *  Copyright 2000-2024 Felix Garcia Carballeira, Diego Camarmas Alonso, Alejandro Calderon Mateos, Luis Miguel Sanchez Garcia, Borja Bergua Guerra
+ *  Copyright 2000-2025 Felix Garcia Carballeira, Diego Camarmas Alonso, Alejandro Calderon Mateos, Luis Miguel Sanchez Garcia, Borja Bergua Guerra, Dario Muñoz Muñoz
  *
  *  This file is part of Expand.
  *
@@ -29,29 +29,30 @@
 
   /* ... Include / Inclusion ........................................... */
 
-  #include "xpn_file.h"
-  #include "xpn_policy_open.h"
-
-
-  /* ... Const / Const ................................................. */
-
-
-  /* ... Data structures / Estructuras de datos ........................ */
+     #include "xpn_file.h"
+     #include "xpn_policy_open.h"
 
 
   /* ... Functions / Funciones ......................................... */
 
-  int XpnGetBlock(int fd, off_t global_offset, off_t *local_offset, int *serv);
+     void XpnCalculateBlockMdata(struct xpn_metadata *mdata, off_t offset, int replication, off_t *local_offset, int *serv);
+     void XpnCalculateBlock(int block_size, int replication_level, int nserv, off_t offset, int replication, int first_node, off_t *local_offset, int *serv);
+     void XpnCalculateBlockInvert(int block_size, int replication_level, int nserv, int serv, off_t local_offset, int first_node, off_t *offset, int *replication);
+     void XpnPrintBlockDistribution(int blocks, struct xpn_metadata *mdata);
 
-  void *XpnReadBlocks      (int fd, const void *buffer, size_t size, off_t offset, struct nfi_worker_io ***io_out, int **ion_out, int num_servers);
-  int   XpnReadBlocksFinish(int fd,       void *buffer, size_t size, off_t offset, struct nfi_worker_io ***io_out, int **ion_out, int num_servers, void *new_buffer);
+     int XpnReadGetBlock(int fd, off_t offset, int serv_client, off_t *local_offset, int *serv);
+     int XpnWriteGetBlock(int fd, off_t offset, int replication, off_t *local_offset, int *serv);
 
-  void *XpnWriteBlocks      (int fd, const void *buffer, size_t size, off_t offset, struct nfi_worker_io ***io_out, int **ion_out, int num_servers);
-  int   XpnWriteBlocksFinish(int fd, const void *buffer, size_t size, off_t offset, struct nfi_worker_io ***io_out, int **ion_out, int num_servers, void *new_buffer);
+     void *XpnReadBlocks      (int fd, const void *buffer, size_t size, off_t offset, int serv_client, struct nfi_worker_io ***io_out, int **ion_out, int num_servers);
+     void XpnReadBlocksFinish(int fd, void *buffer, size_t size, off_t offset, int serv_client, struct nfi_worker_io ***io_out, int **ion_out, int num_servers, const void *new_buffer);
 
-  ssize_t XpnReadGetTotalBytes (int fd, ssize_t *res_v, int num_servers);
-  ssize_t XpnWriteGetTotalBytes(int fd, ssize_t *res_v, int num_servers);
+     void *XpnWriteBlocks      (int fd, const void *buffer, size_t size, off_t offset, struct nfi_worker_io ***io_out, int **ion_out, int num_servers);
 
+     ssize_t XpnReadGetTotalBytes (ssize_t *res_v, int num_servers);
+     ssize_t XpnWriteGetTotalBytes (ssize_t *res_v, int num_servers, struct nfi_worker_io ***io, int *ion, struct nfi_server *servers);
+
+     ssize_t XpnGetRealFileSize(struct xpn_partition *part, struct nfi_attr *attr, int n_serv);
+ 
 
   /* ................................................................... */
 
@@ -60,3 +61,4 @@
   #endif
 
 #endif
+

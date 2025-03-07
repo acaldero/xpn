@@ -1,6 +1,6 @@
 
 /*
- *  Copyright 2020-2024 Felix Garcia Carballeira, Diego Camarmas Alonso, Alejandro Calderon Mateos
+ *  Copyright 2020-2025 Felix Garcia Carballeira, Diego Camarmas Alonso, Alejandro Calderon Mateos
  *
  *  This file is part of Expand.
  *
@@ -32,6 +32,9 @@
   #include <dlfcn.h>
   #include <sys/stat.h>
   #include <stdarg.h>
+  #include <time.h>
+  #include <stdlib.h>
+  #include <sys/vfs.h>
 
   #include "xpn.h"
   #include "syscall_proxies.h"
@@ -55,8 +58,8 @@
   #define MAX_DIRS  10000
   #define PLUSXPN   1000
 
-  #undef __USE_FILE_OFFSET64
-  #undef __USE_LARGEFILE64
+  //#undef __USE_FILE_OFFSET64
+  //#undef __USE_LARGEFILE64
 
 
   #define FD_FREE 0
@@ -133,7 +136,7 @@
   {
     int type;
     int real_fd;
-    int is_file;
+    // int is_file;
   };
 
 
@@ -144,8 +147,8 @@
   int open       ( const char *path, int flags, ... );
   int open64     ( const char *path, int flags, ... );
   int __open_2   ( const char *path, int flags, ... );
-  int openat     ( int dirfd, const char *pathname, int flags, ... );
   int creat      ( const char *path, mode_t mode );
+  int mkstemp    ( char *template );
   int close      ( int fd );
 
   int ftruncate  ( int fildes, off_t length );
@@ -161,12 +164,16 @@
   off_t   lseek   ( int fildes, off_t offset, int whence );
   off64_t lseek64 ( int fd,   off64_t offset, int whence );
 
-  int __lxstat     ( int ver, const char *path, struct stat   *buf );
-  int __lxstat64   ( int ver, const char *path, struct stat64 *buf );
-  int __xstat      ( int ver, const char *path, struct stat   *buf );
-  int __xstat64    ( int ver, const char *path, struct stat64 *buf );
-  int __fxstat     ( int ver,           int fd, struct stat   *buf );
-  int __fxstat64   ( int ver,       int fildes, struct stat64 *buf );
+  int stat         (          const char *path, struct stat     *buf );
+  int statfs       (          const char *path, struct statfs   *buf );
+  int statfs64     (          const char *path, struct statfs64 *buf );
+  int __lxstat     ( int ver, const char *path, struct stat     *buf );
+  int __lxstat64   ( int ver, const char *path, struct stat64   *buf );
+  int __xstat      ( int ver, const char *path, struct stat     *buf );
+  int __xstat64    ( int ver, const char *path, struct stat64   *buf );
+  int fstat        (                    int fd, struct stat     *buf );
+  int __fxstat     ( int ver,           int fd, struct stat     *buf );
+  int __fxstat64   ( int ver,       int fildes, struct stat64   *buf );
   int __fxstatat   ( int ver, int dirfd, const char *path, struct stat   *buf, int flags );
   int __fxstatat64 ( int ver, int dirfd, const char *path, struct stat64 *buf, int flags );
 
@@ -186,7 +193,8 @@
 
   int  fseek      ( FILE *stream, long int offset, int whence );
   long ftell      ( FILE *stream );
-  int  dlsym_feof ( FILE *stream );
+  void rewind     ( FILE *stream );
+  int  feof       ( FILE *stream );
 
 
   // Directory API

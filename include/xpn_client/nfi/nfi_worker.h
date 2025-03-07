@@ -1,6 +1,6 @@
 
 /*
- *  Copyright 2020-2024 Felix Garcia Carballeira, Diego Camarmas Alonso, Alejandro Calderon Mateos
+ *  Copyright 2020-2025 Felix Garcia Carballeira, Diego Camarmas Alonso, Alejandro Calderon Mateos
  *
  *  This file is part of Expand.
  *
@@ -33,12 +33,6 @@
   #include "nfi_worker_task.h"
 
 
-  /* ... Const / Const ................................................. */
-
-
-  /* ... Data structures / Estructuras de datos ........................ */
-
-
   /* ... Functions / Funciones ......................................... */
 
   int     nfi_worker_init    ( struct nfi_worker *wrk, struct nfi_server *serv, int thread );
@@ -49,10 +43,10 @@
 
 
   // NEW //////////////////////////////////////////
-  int     nfiworker_init(struct nfi_server *serv) ;
-  int     nfiworker_launch ( void (*worker_function)(struct st_th), struct nfi_worker *wrk ) ;
-  ssize_t nfiworker_wait   ( struct nfi_worker *wrk ) ;
-  void    nfiworker_destroy(struct nfi_server *serv) ;
+  int     nfiworker_init    (struct nfi_server *serv) ;
+  int     nfiworker_launch  ( void (*worker_function)(struct st_th), struct nfi_worker *wrk );
+  ssize_t nfiworker_wait    ( struct nfi_worker *wrk );
+  void    nfiworker_destroy (struct nfi_server *serv);
 
 
   /* ................................................................... */

@@ -1,6 +1,6 @@
 
 /*
- *  Copyright 2000-2024 Felix Garcia Carballeira, Diego Camarmas Alonso, Alejandro Calderon Mateos, Luis Miguel Sanchez Garcia, Borja Bergua Guerra
+ *  Copyright 2000-2025 Felix Garcia Carballeira, Diego Camarmas Alonso, Alejandro Calderon Mateos, Luis Miguel Sanchez Garcia, Borja Bergua Guerra
  *
  *  This file is part of Expand.
  *
@@ -31,7 +31,6 @@
   /* ... Include / Inclusion ........................................... */
 
   #include "xpn.h"
-  #include "xpn_err.h"
   #include "xpn_policy_cwd.h"
 
   #include <stdio.h>
@@ -51,12 +50,9 @@
   #include <xpn.h>
 
 
-  /* ... Const / Const ................................................. */
-
-
   /* ... Data structures / Estructuras de datos ........................ */
 
-  extern struct xpn_filedesc *xpn_file_table[XPN_MAX_FILE];
+     extern struct xpn_filedesc *xpn_file_table[XPN_MAX_FILE];
 
 
   /* ... Functions / Funciones ......................................... */
@@ -88,3 +84,4 @@
   #endif
 
 #endif
+

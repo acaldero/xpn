@@ -1,6 +1,6 @@
 
 /*
- *  Copyright 2000-2024 Felix Garcia Carballeira, Diego Camarmas Alonso, Alejandro Calderon Mateos, Luis Miguel Sanchez Garcia, Borja Bergua Guerra
+ *  Copyright 2000-2025 Felix Garcia Carballeira, Diego Camarmas Alonso, Alejandro Calderon Mateos, Luis Miguel Sanchez Garcia, Borja Bergua Guerra
  *
  *  This file is part of Expand.
  *
@@ -43,6 +43,7 @@ static int xpn_adaptor_initCalled_getenv = 0; // env variable obtained
  */
 char *xpn_adaptor_partition_prefix = "/tmp/expand/"; // Original --> xpn://
 int   xpn_prefix_change_verified = 0;
+size_t   xpn_prefix_strlen = 12;
 
 
 /* ... Auxiliar functions / Funciones auxiliares ......................................... */
@@ -60,12 +61,11 @@ int is_xpn_prefix   ( const char * path )
     if (env_prefix != NULL)
     {
       xpn_adaptor_partition_prefix = env_prefix;
+      xpn_prefix_strlen = strlen(xpn_adaptor_partition_prefix);
     }
   }
-  
-  const char *prefix = (const char *)xpn_adaptor_partition_prefix;
 
-  return ( !strncmp(prefix, path, strlen(prefix)) && strlen(path) > strlen(prefix) );
+  return ( strlen(path) > xpn_prefix_strlen && !memcmp(xpn_adaptor_partition_prefix, path, xpn_prefix_strlen) );
 }
 
 /**
@@ -73,7 +73,7 @@ int is_xpn_prefix   ( const char * path )
  */
 const char * skip_xpn_prefix ( const char * path )
 {
-  return (const char *)(path + strlen(xpn_adaptor_partition_prefix));
+  return (const char *)(path + xpn_prefix_strlen);
 }
 
 
@@ -116,7 +116,7 @@ void fdstable_realloc ( void )
   {
     fdstable[i].type = FD_FREE;
     fdstable[i].real_fd = -1;
-    fdstable[i].is_file = -1;
+    // fdstable[i].is_file = -1;
   }
 
   debug_info("[BYPASS] << After fdstable_realloc....\n");
@@ -138,7 +138,7 @@ struct generic_fd fdstable_get ( int fd )
   debug_info("[BYPASS] >> Begin fdstable_get....\n");
   debug_info("[BYPASS]    1) fd  => %d\n", fd);
 
-  if (fd >= PLUSXPN)
+  if ((NULL != fdstable) && (fd >= PLUSXPN))
   {
     fd = fd - PLUSXPN;
     ret = fdstable[fd];
@@ -161,12 +161,16 @@ int fdstable_put ( struct generic_fd fd )
 
   for (int i = fdstable_first_free; i < fdstable_size; ++i)
   {
-    if ( fdstable[i].type == FD_FREE ) {
+    if ( fdstable[i].type == FD_FREE )
+    {
       fdstable[i] = fd;
       fdstable_first_free = (long)(i + 1);
 
       debug_info("[BYPASS]\t fdstable_put -> fd %d ; type: %d ; real_fd: %d\n", i + PLUSXPN, fdstable[i].type, fdstable[i].real_fd);
       debug_info("[BYPASS] << After fdstable_put....\n");
+
+      // trick for python3...
+      dup2(fd.real_fd, i+PLUSXPN);
 
       return i + PLUSXPN;
     }
@@ -176,11 +180,15 @@ int fdstable_put ( struct generic_fd fd )
 
   fdstable_realloc();
 
-  if ( fdstable[old_size].type == FD_FREE ) {
+  if ( fdstable[old_size].type == FD_FREE )
+  {
     fdstable[old_size] = fd;
 
     debug_info("[BYPASS]\t fdstable_put -> fd %ld ; type: %d ; real_fd: %d\n", old_size + PLUSXPN, fdstable[old_size].type, fdstable[old_size].real_fd);
     debug_info("[BYPASS] << After fdstable_put....\n");
+
+      // trick for python3...
+      dup2(fd.real_fd, old_size+PLUSXPN);
 
     return old_size + PLUSXPN;
   }
@@ -205,11 +213,14 @@ int fdstable_remove ( int fd )
   fd = fd - PLUSXPN;
   fdstable[fd].type    = FD_FREE;
   fdstable[fd].real_fd = -1;
-  fdstable[fd].is_file = -1;
+  // fdstable[fd].is_file = -1;
 
   if (fd < fdstable_first_free) {
     fdstable_first_free = fd;
   }
+
+      // trick for python3...
+      close(fd+PLUSXPN);
 
   debug_info("[BYPASS] << After fdstable_remove....\n");
 
@@ -218,7 +229,7 @@ int fdstable_remove ( int fd )
 
 int add_xpn_file_to_fdstable ( int fd )
 {
-  struct stat st;
+  // struct stat st;
   struct generic_fd virtual_fd;
   
   debug_info("[BYPASS] >> Begin add_xpn_file_to_fdstable....\n");
@@ -235,12 +246,12 @@ int add_xpn_file_to_fdstable ( int fd )
   } 
 
   // fstat(fd...
-  xpn_fstat(fd, &st);
+  // xpn_fstat(fd, &st);
 
   // setup virtual_fd
   virtual_fd.type    = FD_XPN;
   virtual_fd.real_fd = fd;
-  virtual_fd.is_file = (S_ISDIR(st.st_mode)) ? 0 : 1;
+  // virtual_fd.is_file = (S_ISDIR(st.st_mode)) ? 0 : 1;
 
   // insert into fdstable
   ret = fdstable_put ( virtual_fd );
@@ -338,7 +349,7 @@ int fdsdirtable_put ( DIR * dir )
 
   virtual_fd.type    = FD_XPN;
   virtual_fd.real_fd = fd;
-  virtual_fd.is_file = 0;
+  // virtual_fd.is_file = 0;
 
   // insert into the dirtable (and fdstable)
   for (int i = fdsdirtable_first_free; i < fdsdirtable_size; ++i)
@@ -508,6 +519,8 @@ int xpn_adaptor_keepInit ( void )
     fdstable_init ();
     fdsdirtable_init ();
     ret = xpn_init();
+    // Add callback atexit of xpn_destroy
+    atexit((void (*)(void))xpn_destroy);
 
     debug_info("[BYPASS]\t After xpn_init() -> %d\n", ret);
 
@@ -534,7 +547,6 @@ int xpn_adaptor_keepInit ( void )
 /* ... Functions / Funciones ......................................... */
 
 // File API
-
 int open ( const char *path, int flags, ... )
 {
   int ret, fd;
@@ -582,7 +594,7 @@ int open ( const char *path, int flags, ... )
 
   va_end(ap);
 
-  debug_info("[BYPASS] << After open.... %s\n", path);
+  debug_info("[BYPASS] << After open....\n");
 
   return ret;
 }
@@ -635,7 +647,7 @@ int open64 ( const char *path, int flags, ... )
 
   va_end(ap);
 
-  debug_info("[BYPASS] << After open64.... %s\n", path);
+  debug_info("[BYPASS] << After open64....\n");
 
   return ret;
 }
@@ -689,66 +701,12 @@ int __open_2 ( const char *path, int flags, ... )
 
   va_end(ap);
 
-  debug_info("[BYPASS] << After __open_2.... %s\n", path);
+  debug_info("[BYPASS] << After __open_2....\n");
 
   return ret;
 }
 
 #endif
-
-int openat ( int dirfd, const char *path, int flags, ... )
-{
-  int ret, fd;
-  va_list ap;
-  mode_t mode = 0;
-
-  va_start(ap, flags);
-  mode = va_arg(ap, mode_t);
-
-  debug_info("[BYPASS] >> Begin openat....\n");
-  debug_info("[BYPASS]    1) dirfd => %d\n", dirfd);
-  debug_info("[BYPASS]    2) Path  => %s\n", path);
-  debug_info("[BYPASS]    3) Flags => %d\n", flags);
-  debug_info("[BYPASS]    4) Mode  => %d\n", mode);
-
-  dirfd = dirfd ; // to avoid "warning: unused parameter ‘dirfd’"
-
-  // This if checks if variable path passed as argument starts with the expand prefix.
-  if (is_xpn_prefix(path))
-  {
-    // We must initialize expand if it has not been initialized yet.
-    xpn_adaptor_keepInit ();
-
-    // It is an XPN partition, so we redirect the syscall to expand syscall
-    debug_info("[BYPASS]\t xpn_open (%s,%o)\n",path + strlen(xpn_adaptor_partition_prefix), flags);
-
-    if (mode != 0) {
-      fd = xpn_open(skip_xpn_prefix(path), flags, mode);
-    }
-    else {
-      fd = xpn_open(skip_xpn_prefix(path), flags);
-    }
-
-    debug_info("[BYPASS]\t xpn_open (%s,%o) -> %d\n", skip_xpn_prefix(path), flags, fd);
-
-    ret = add_xpn_file_to_fdstable(fd);
-  }
-  // Not an XPN partition. We must link with the standard library.
-  else 
-  {
-    debug_info("[BYPASS]\t dlsym_openat (%d,%s,%o,%o)\n", dirfd, path, flags, mode);
-
-    ret = dlsym___open_2((char *)path, flags);
-
-    debug_info("[BYPASS]\t dlsym_openat (%d,%s,%o,%o) -> %d\n", dirfd, path, flags, mode, ret);
-  }
-
-  va_end(ap);
-
-  debug_info("[BYPASS] << After open.... %s\n", path);
-
-  return ret;
-}
 
 int creat ( const char *path, mode_t mode )
 {
@@ -781,6 +739,45 @@ int creat ( const char *path, mode_t mode )
   }
 
   debug_info("[BYPASS] << After creat....\n");
+  return ret;
+}
+
+int mkstemp (char *template)
+{
+  int ret = -1;
+
+  debug_info("[BYPASS] >> Begin mkstemp...\n");
+  debug_info("[BYPASS]    1) template %s\n", template);
+
+  // This if checks if variable path passed as argument starts with the expand prefix.
+  if (is_xpn_prefix(template))
+  {
+    // It is an XPN partition, so we redirect the syscall to expand syscall
+    debug_info("[BYPASS]\t try to creat %s", skip_xpn_prefix(template));
+
+    srand(time(NULL));
+    int n = rand()%100000;
+
+    char *str_init = strstr(template, "XXXXXX");
+    sprintf(str_init,"%06d", n);
+
+    int fd  = xpn_creat((const char *)skip_xpn_prefix(template), S_IRUSR | S_IWUSR);
+    ret = add_xpn_file_to_fdstable(fd);
+
+    debug_info("[BYPASS]\t creat %s -> %d", skip_xpn_prefix(template), ret);
+  }
+  // Not an XPN partition. We must link with the standard library
+  else
+  {
+    debug_info("[BYPASS]\t try to dlsym_mkstemp\n");
+
+    ret = dlsym_mkstemp(template);
+
+    debug_info("[BYPASS]\t dlsym_mkstemp -> %d\n", ret);
+  }
+
+  debug_info("[BYPASS] << After mkstemp...\n");
+
   return ret;
 }
 
@@ -838,14 +835,14 @@ ssize_t read ( int fd, void *buf, size_t nbyte )
     xpn_adaptor_keepInit ();
 
     // It is an XPN partition, so we redirect the syscall to expand syscall
-    if (virtual_fd.is_file == 0)
-    {
-      debug_error("[BYPASS:%s:%d] Error: is not a file\n", __FILE__, __LINE__);
-      debug_info("[BYPASS] << After read...\n");
+    // if (virtual_fd.is_file == 0)
+    // {
+    //   debug_error("[BYPASS:%s:%d] Error: is not a file\n", __FILE__, __LINE__);
+    //   debug_info("[BYPASS] << After read...\n");
 
-      errno = EISDIR;
-      return -1;
-    }
+    //   errno = EISDIR;
+    //   return -1;
+    // }
 
     debug_info("[BYPASS]\t try to xpn_read %d, %p, %ld\n", virtual_fd.real_fd, buf, nbyte);
 
@@ -886,14 +883,14 @@ ssize_t write ( int fd, const void *buf, size_t nbyte )
     xpn_adaptor_keepInit ();
 
     // It is an XPN partition, so we redirect the syscall to expand syscall
-    if (virtual_fd.is_file == 0)
-    {
-      debug_error("[BYPASS:%s:%d] Error: is not a file\n", __FILE__, __LINE__);
-      debug_info("[BYPASS] << After write...\n");
+    // if (virtual_fd.is_file == 0)
+    // {
+    //   debug_error("[BYPASS:%s:%d] Error: is not a file\n", __FILE__, __LINE__);
+    //   debug_info("[BYPASS] << After write...\n");
 
-      errno = EISDIR;
-      return -1;
-    }
+    //   errno = EISDIR;
+    //   return -1;
+    // }
 
     debug_info("[BYPASS]\t try to xpn_write %d, %p, %ld\n", virtual_fd.real_fd, buf, nbyte);
 
@@ -935,14 +932,14 @@ ssize_t pread ( int fd, void *buf, size_t count, off_t offset )
     xpn_adaptor_keepInit ();
 
     // It is an XPN partition, so we redirect the syscall to expand syscall
-    if (virtual_fd.is_file == 0)
-    {
-      debug_error("[BYPASS:%s:%d] Error: is not a file\n", __FILE__, __LINE__);
-      debug_info("[BYPASS] << After pread...\n");
+    // if (virtual_fd.is_file == 0)
+    // {
+    //   debug_error("[BYPASS:%s:%d] Error: is not a file\n", __FILE__, __LINE__);
+    //   debug_info("[BYPASS] << After pread...\n");
 
-      errno = EISDIR;
-      return -1;
-    }
+    //   errno = EISDIR;
+    //   return -1;
+    // }
 
     debug_info("[BYPASS]\t try to xpn_read %d, %p, %ld, %ld\n", virtual_fd.real_fd, buf, count, offset);
 
@@ -990,14 +987,14 @@ ssize_t pwrite ( int fd, const void *buf, size_t count, off_t offset )
     xpn_adaptor_keepInit ();
 
     // It is an XPN partition, so we redirect the syscall to expand syscall
-    if (virtual_fd.is_file == 0)
-    {
-      debug_error("[BYPASS:%s:%d] Error: is not a file\n", __FILE__, __LINE__);
-      debug_info("[BYPASS] << After pwrite...\n");
+    // if (virtual_fd.is_file == 0)
+    // {
+    //   debug_error("[BYPASS:%s:%d] Error: is not a file\n", __FILE__, __LINE__);
+    //   debug_info("[BYPASS] << After pwrite...\n");
 
-      errno = EISDIR;
-      return -1;
-    }
+    //   errno = EISDIR;
+    //   return -1;
+    // }
 
     debug_info("[BYPASS]\t try to xpn_write %d, %p, %ld, %ld\n", virtual_fd.real_fd, buf, count, offset);
 
@@ -1045,14 +1042,14 @@ ssize_t pread64 ( int fd, void *buf, size_t count, off_t offset )
     xpn_adaptor_keepInit ();
 
     // It is an XPN partition, so we redirect the syscall to expand syscall
-    if (virtual_fd.is_file == 0)
-    {
-      debug_error("[BYPASS:%s:%d] Error: is not a file\n", __FILE__, __LINE__);
-      debug_info("[BYPASS] << After pread64...\n");
+    // if (virtual_fd.is_file == 0)
+    // {
+    //   debug_error("[BYPASS:%s:%d] Error: is not a file\n", __FILE__, __LINE__);
+    //   debug_info("[BYPASS] << After pread64...\n");
 
-      errno = EISDIR;
-      return -1;
-    }
+    //   errno = EISDIR;
+    //   return -1;
+    // }
 
     debug_info("[BYPASS]\t try to xpn_read %d, %p, %ld, %ld\n", virtual_fd.real_fd, buf, count, offset);
 
@@ -1100,14 +1097,14 @@ ssize_t pwrite64 ( int fd, const void *buf, size_t count, off_t offset )
     xpn_adaptor_keepInit ();
 
     // It is an XPN partition, so we redirect the syscall to expand syscall
-    if (virtual_fd.is_file == 0)
-    {
-      debug_error("[BYPASS:%s:%d] Error: is not a file\n", __FILE__, __LINE__);
-      debug_info("[BYPASS] << After pwrite64...\n");
+    // if (virtual_fd.is_file == 0)
+    // {
+    //   debug_error("[BYPASS:%s:%d] Error: is not a file\n", __FILE__, __LINE__);
+    //   debug_info("[BYPASS] << After pwrite64...\n");
 
-      errno = EISDIR;
-      return -1;
-    }
+    //   errno = EISDIR;
+    //   return -1;
+    // }
 
     debug_info("[BYPASS]\t try to xpn_write %d, %p, %ld, %ld\n", virtual_fd.real_fd, buf, count, offset);
 
@@ -1204,6 +1201,111 @@ off64_t lseek64 ( int fd, off64_t offset, int whence )
   }
 
   debug_info("[BYPASS] << After lseek64...\n");
+
+  return ret;
+}
+
+int stat(const char *path, struct stat *buf)
+{
+  int ret;
+
+  debug_info("[BYPASS] >> Begin stat...\n");
+  debug_info("[BYPASS]    1) Path  => %s\n", path);
+
+  // This if checks if variable path passed as argument starts with the expand prefix.
+  if (is_xpn_prefix(path))
+  {
+    // We must initialize expand if it has not been initialized yet.
+    xpn_adaptor_keepInit ();
+
+    // It is an XPN partition, so we redirect the syscall to expand syscall
+    debug_info("[BYPASS]\t xpn_stat %s\n",       skip_xpn_prefix(path));
+
+    ret = xpn_stat(skip_xpn_prefix(path), buf);
+
+    debug_info("[BYPASS]\t xpn_stat %s -> %d\n", skip_xpn_prefix(path), ret);
+  }
+  // Not an XPN partition. We must link with the standard library
+  else
+  {
+    debug_info("[BYPASS]\t try to dlsym_stat\n");
+
+    ret = dlsym_stat(_STAT_VER,(const char *)path, buf);
+
+    debug_info("[BYPASS]\t dlsym_stat -> %d\n", ret);
+  }
+
+  debug_info("[BYPASS] << After stat...\n");
+
+  return ret;
+}
+
+int statfs64 (const char *path, struct statfs64 *buf)
+{
+  int ret;
+
+  debug_info("[BYPASS] >> Begin statfs64...\n");
+  debug_info("[BYPASS]    1) Path  => %s\n", path);
+
+  // This if checks if variable path passed as argument starts with the expand prefix.
+  if (is_xpn_prefix(path))
+  {
+    // We must initialize expand if it has not been initialized yet.
+    xpn_adaptor_keepInit ();
+
+    // It is an XPN partition, so we redirect the syscall to expand syscall
+    debug_info("[BYPASS]\t xpn_stat %s\n",       skip_xpn_prefix(path));
+
+    ret = xpn_stat(skip_xpn_prefix(path), (struct stat *) buf);
+
+    debug_info("[BYPASS]\t xpn_stat %s -> %d\n", skip_xpn_prefix(path), ret);
+  }
+  // Not an XPN partition. We must link with the standard library
+  else
+  {
+    debug_info("[BYPASS]\t try to dlsym_statfs64\n");
+
+    ret = dlsym_statfs64(path, buf);
+
+    debug_info("[BYPASS]\t dlsym_statfs64 -> %d\n", ret);
+  }
+
+  debug_info("[BYPASS] << After statfs64...\n");
+
+  return ret;
+}
+
+int statfs (const char *path, struct statfs *buf)
+{
+  int ret;
+
+  debug_info("[BYPASS] >> Begin statfs...\n");
+  debug_info("[BYPASS]    1) Path  => %s\n", path);
+
+  // This if checks if variable path passed as argument starts with the expand prefix.
+  if (is_xpn_prefix(path))
+  {
+    // We must initialize expand if it has not been initialized yet.
+    xpn_adaptor_keepInit ();
+
+    // It is an XPN partition, so we redirect the syscall to expand syscall
+    debug_info("[BYPASS]\t xpn_stat %s\n",       skip_xpn_prefix(path));
+
+    ret = xpn_stat(skip_xpn_prefix(path), (struct stat *) buf);
+
+    debug_info("[BYPASS]\t xpn_stat %s -> %d\n", skip_xpn_prefix(path), ret);
+  }
+  // Not an XPN partition. We must link with the standard library
+  else
+  {
+    debug_info("[BYPASS]\t try to dlsym_statfs\n");
+
+    ret = dlsym_statfs(path, buf);
+
+    debug_info("[BYPASS]\t dlsym_statfs -> %d\n", ret);
+  }
+
+  debug_info("[BYPASS] << After statfs...\n");
 
   return ret;
 }
@@ -1395,6 +1497,43 @@ int __xstat ( int ver, const char *path, struct stat *buf )
   }
 
   debug_info("[BYPASS] << After __xstat...\n");
+
+  return ret;
+}
+
+int fstat ( int fd, struct stat *buf )
+{
+  int ret = -1;
+
+  debug_info("[BYPASS] >> Begin fstat...\n");
+  debug_info("[BYPASS]    1) fd  => %d\n", fd);
+  debug_info("[BYPASS]    2) buf => %p\n", buf);
+
+  struct generic_fd virtual_fd = fdstable_get ( fd );
+
+  if (virtual_fd.type == FD_XPN)
+  {
+    // We must initialize expand if it has not been initialized yet.
+    xpn_adaptor_keepInit ();
+
+    // It is an XPN partition, so we redirect the syscall to expand syscall
+    debug_info("[BYPASS]\t xpn_fstat\n");
+
+    ret = xpn_fstat(virtual_fd.real_fd, buf);
+
+    debug_info("[BYPASS]\t xpn_fstat -> %d\n", ret);
+  }
+  // Not an XPN partition. We must link with the standard library
+  else
+  {
+    debug_info("[BYPASS]\t try to dlsym_fstat\n");
+
+    ret = dlsym_fstat(_STAT_VER, fd, buf);
+
+    debug_info("[BYPASS]\t dlsym_fstat -> %d\n", ret);
+  }
+
+  debug_info("[BYPASS] << After fstat...\n");
 
   return ret;
 }
@@ -1684,23 +1823,7 @@ int remove ( const char *path )
   return ret;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // File API (stdio)
-
 FILE *fopen ( const char *path, const char *mode )
 {
   FILE * ret;
@@ -1852,13 +1975,13 @@ size_t fread ( void *ptr, size_t size, size_t nmemb, FILE *stream )
     xpn_adaptor_keepInit ();
 
     // It is an XPN partition, so we redirect the syscall to expand syscall
-    if (virtual_fd.is_file == 0) {
-      debug_error("[BYPASS:%s:%d] Error: is not a file\n", __FILE__, __LINE__);
-      debug_info("[BYPASS] << After fread...\n");
+    // if (virtual_fd.is_file == 0) {
+    //   debug_error("[BYPASS:%s:%d] Error: is not a file\n", __FILE__, __LINE__);
+    //   debug_info("[BYPASS] << After fread...\n");
 
-      errno = EISDIR;
-      return -1;
-    }
+    //   errno = EISDIR;
+    //   return -1;
+    // }
 
     int buf_size = size * nmemb;
 
@@ -1904,13 +2027,13 @@ size_t fwrite ( const void *ptr, size_t size, size_t nmemb, FILE *stream )
     xpn_adaptor_keepInit ();
 
     // It is an XPN partition, so we redirect the syscall to expand syscall
-    if (virtual_fd.is_file == 0) {
-      debug_error("[BYPASS:%s:%d] Error: is not a file\n", __FILE__, __LINE__);
-      debug_info("[BYPASS] << After fwrite...\n");
+    // if (virtual_fd.is_file == 0) {
+    //   debug_error("[BYPASS:%s:%d] Error: is not a file\n", __FILE__, __LINE__);
+    //   debug_info("[BYPASS] << After fwrite...\n");
 
-      errno = EISDIR;
-      return -1;
-    }
+    //   errno = EISDIR;
+    //   return -1;
+    // }
 
     int buf_size = size * nmemb;
 
@@ -1934,11 +2057,6 @@ size_t fwrite ( const void *ptr, size_t size, size_t nmemb, FILE *stream )
 
   return ret;
 }
-
-
-
-
-
 
 int fseek ( FILE *stream, long int offset, int whence )
 {
@@ -2016,6 +2134,40 @@ long ftell ( FILE *stream )
   debug_info("[BYPASS] << After ftell....\n");
 
   return ret;
+}
+
+void rewind (FILE *stream)
+{
+  debug_info("[BYPASS] >> Begin rewind....\n");
+  debug_info("[BYPASS]    1) stream = %p\n", stream);
+
+  int fd = fileno(stream);
+  struct generic_fd virtual_fd = fdstable_get ( fd );
+
+  // This if checks if variable fd passed as argument is a expand fd.
+  if(virtual_fd.type == FD_XPN)
+  {
+    // We must initialize expand if it has not been initialized yet.
+    xpn_adaptor_keepInit ();
+
+    // It is an XPN partition, so we redirect the syscall to expand syscall
+    debug_info("[BYPASS]\t xpn_lseek %d\n", virtual_fd.real_fd);
+
+    xpn_lseek(virtual_fd.real_fd, 0, SEEK_SET);
+
+    debug_info("[BYPASS]\t xpn_lseek %d\n", virtual_fd.real_fd);
+  }
+  // Not an XPN partition. We must link with the standard library
+  else
+  {
+    debug_info("[BYPASS]\t try to dlsym_rewind\n");
+
+    dlsym_rewind(stream);
+
+    debug_info("[BYPASS]\t dlsym_rewind\n");
+  }
+
+  debug_info("[BYPASS] << After rewind....\n");
 }
 
 int  feof(FILE *stream)
@@ -2847,3 +2999,4 @@ int MPI_Finalize (void)
 
   return PMPI_Finalize();
 }
+
