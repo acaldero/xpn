@@ -67,6 +67,92 @@
   <h2 align="center">Publications</h2>
 </div>
 
+### 2026
+
+<details>
+<summary>:newspaper: Expand: An ad-hoc file system for parallel and distributed environments</summary>
+ 
+  * Journal paper: SoftwareX
+  * Authors: Diego Camarmas-Alonso, Felix Garcia-Carballeira, Alejandro Calderon-Mateos, Elias Del-Pozo-Puñal, Dario Muñoz-Muñoz, Gabriel Sotodosos-Morales, Jesus Carretero
+  * [:link: Open publication](https://doi.org/10.1016/j.softx.2026.102691)
+  ```bibtex
+  @article{CAMARMASALONSO2026102691,
+    title = {Expand: An ad-hoc file system for parallel and distributed environments},
+    journal = {SoftwareX},
+    volume = {34},
+    pages = {102691},
+    year = {2026},
+    issn = {2352-7110},
+    doi = {https://doi.org/10.1016/j.softx.2026.102691},
+    url = {https://www.sciencedirect.com/science/article/pii/S2352711026001834},
+    author = {Diego Camarmas-Alonso and Felix Garcia-Carballeira and Alejandro Calderon-Mateos and Elias Del-Pozo-Puñal and Dario Muñoz-Muñoz and Gabriel Sotodosos-Morales and Jesus Carretero}
+  }
+  ```
+</details>
+
+<details>
+<summary>:newspaper: LFI: a communication library for high-performance networks</summary>
+ 
+  * Journal paper: Cluster Computing
+  * Authors: Dario Muñoz-Muñoz, Felix Garcia-Carballeira, Diego Camarmas-Alonso, Alejandro Calderon-Mateos
+  * [:link: Open publication](https://doi.org/10.1007/s10586-026-06274-8)
+  ```bibtex
+  @article{munoz2026lfi,
+    title={LFI: a communication library for high-performance networks},
+    author={Mu{\~n}oz-Mu{\~n}oz, Dario and Garcia-Carballeira, Felix and Camarmas-Alonso, Diego and Calderon-Mateos, Alejandro},
+    journal={Cluster Computing},
+    volume={29},
+    number={454},
+    year={2026},
+    publisher={Springer}
+  }
+  ```
+</details>
+
+<details>
+<summary>:newspaper: Securizando el sistema de ficheros Expand utilizando blockchain</summary>
+  
+  * Conference paper: XXXVI Jornadas de Paralelismo (JP26)
+  * Authors: Diego Camarmas-Alonso, Felix Garcia-Carballeira, Alejandro Calderon-Mateos, Jesus Carretero
+  * [:link: Open publication](https://doi.org/10.5281/zenodo.21071965)
+  ```bibtex
+  @article{DIEGOCAMARMASALONSO_JP26,
+    title = {Securizando el sistema de ficheros Expand utilizando blockchain},
+    conference = {XXXVI Jornadas de Paralelismo (JP26)},
+    volume = {1},
+    pages = {509-517},
+    year = {2026},
+    doi = {https://doi.org/10.5281/zenodo.21071965},
+    url = {https://zenodo.org/records/21071965},
+    author = {Diego Camarmas-Alonso, Felix Garcia-Carballeira, Alejandro Calderon-Mateos, Jesus Carretero}
+  }
+  ```
+</details>
+
+<details>
+<summary>:newspaper: Checkpointing transparente en aplicaciones que utilizan sistemas de ficheros ad-hoc</summary>
+  
+  * Conference paper: XXXVI Jornadas de Paralelismo (JP26)
+  * Authors: Dario Muñoz-Muñoz, Felix Garcia-Carballeira, Alejandro Calderon-Mateos, Diego Camarmas-Alonso, Jesus Carretero
+  * [:link: Open publication](https://doi.org/10.5281/zenodo.21073650)
+  ```bibtex
+  @article{DARIOMUNOZMUNOZ_JP26,
+    title = {Checkpointing transparente en aplicaciones que utilizan sistemas de ficheros ad-hoc},
+    conference = {XXXVI Jornadas de Paralelismo (JP26)},
+    volume = {1},
+    pages = {147-155},
+    year = {2026},
+    doi = {https://doi.org/10.5281/zenodo.21073650},
+    url = {https://zenodo.org/records/21073650},
+    author = {Dario Muñoz-Muñoz, Felix Garcia-Carballeira, Alejandro Calderon-Mateos, Diego Camarmas-Alonso, Jesus Carretero}
+  }
+  ```
+</details>
+
+
+
+
+
 ### 2025
 
 <details>
@@ -388,15 +474,21 @@
   <h2 align="center">Authors</h2>
 </div>
 
+  * :technologist: [Diego Camarmas Alonso](https://github.com/dcamarmas)
   * :technologist: [Félix García Carballeira](https://github.com/fgcarbal)
   * :technologist: [Alejandro Calderón Mateos](https://github.com/acaldero)
-  * :technologist: Luis Miguel Sanchez Garcia
-  * :technologist: Borja Bergua Guerra
-  * :technologist: [Diego Camarmas Alonso](https://github.com/dcamarmas)
+  * :technologist: Jesús Carretero Pérez
+
+### Contributors
+  
   * :technologist: [Elías Del Pozo Puñal](https://github.com/edelpozop)
   * :technologist: [Dario Muñoz Muñoz](https://github.com/dariomnz)
   * :technologist: [Gabriel Sotodosos Morales](https://github.com/gsotodos)
-  * :technologist: Jesús Carretero
+
+### Former Collaborators
+
+  * :technologist: Luis Miguel Sanchez Garcia
+  * :technologist: Borja Bergua Guerra
     
 </details>
 
