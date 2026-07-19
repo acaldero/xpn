@@ -119,6 +119,14 @@ void nfi_do_operation (struct st_th th_arg)
     case op_statfs:
       ret = wrk->server->ops->nfi_statfs(wrk->server, wrk->arg.inf);
       break;
+    case op_preload:
+      debug_info("[%s] nfi_worker_run(%lu)->nfi_preload\n", __FILE__, (unsigned long int) pthread_self());
+      ret = wrk->server->ops->nfi_preload(wrk->server, wrk->arg.virtual_path, wrk->arg.storage_path, wrk->arg.block_size, wrk->arg.replication_level);
+      break;
+    case op_flush:
+      debug_info("[%s] nfi_worker_run(%lu)->nfi_flush\n", __FILE__, (unsigned long int) pthread_self());
+      ret = wrk->server->ops->nfi_flush(wrk->server, wrk->arg.virtual_path, wrk->arg.storage_path, wrk->arg.block_size, wrk->arg.replication_level);
+      break;
 
     //Metadata
     case op_read_mdata:
@@ -397,6 +405,54 @@ int nfi_worker_do_statfs (struct nfi_worker * wrk, struct nfi_info * inf)
   debug_info("[TH_ID=%lu] [NFI_OPS] [nfi_worker_do_statfs] >> End\n", pthread_self());
 
   return 0;
+}
+
+int nfi_worker_do_preload(struct nfi_worker * wrk, char * url, char * virtual_path, char * storage_path, int block_size, int replication_level ) 
+{
+    debug_info("[%s] %s (%lu) with_threads = %d\n", __FILE__, __FUNCTION__, (unsigned long int) pthread_self(), wrk->thread);
+
+    if (wrk->server->ops->nfi_preload == NULL) 
+    {
+        wrk->arg.result = -1;
+        return -1;
+    }
+
+    // Pack request
+    wrk->arg.operation = op_preload;
+    strcpy(wrk->arg.url, url);
+    strcpy(wrk->arg.virtual_path, virtual_path);
+    strcpy(wrk->arg.storage_path, storage_path);
+    wrk->arg.block_size = block_size;
+    wrk->arg.replication_level = replication_level;
+
+    // Do operation
+    nfiworker_launch(nfi_do_operation, wrk);
+
+    return 0;
+}
+
+int nfi_worker_do_flush(struct nfi_worker * wrk, char * url, char * virtual_path, char * storage_path, int block_size, int replication_level ) 
+{
+    debug_info("[%s] %s (%lu) with_threads = %d\n", __FILE__, __FUNCTION__, (unsigned long int) pthread_self(), wrk->thread);
+
+    if (wrk->server->ops->nfi_flush == NULL) 
+    {
+        wrk->arg.result = -1;
+        return -1;
+    }
+
+    // Pack request
+    wrk->arg.operation = op_flush;
+    strcpy(wrk->arg.url, url);
+    strcpy(wrk->arg.virtual_path, virtual_path);
+    strcpy(wrk->arg.storage_path, storage_path);
+    wrk->arg.block_size = block_size;
+    wrk->arg.replication_level = replication_level;
+
+    // Do operation
+    nfiworker_launch(nfi_do_operation, wrk);
+
+    return 0;
 }
 
 int nfi_worker_do_read_mdata (struct nfi_worker *wrk, char * url, struct xpn_metadata *mdata)

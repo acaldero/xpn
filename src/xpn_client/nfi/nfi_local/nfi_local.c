@@ -173,6 +173,8 @@ int nfi_local_init ( char *url, struct nfi_server *serv, __attribute__((__unused
   serv->ops->nfi_rmdir      = nfi_local_rmdir;
 
   serv->ops->nfi_statfs     = nfi_local_statfs;
+  serv->ops->nfi_preload    = nfi_local_preload;
+  serv->ops->nfi_flush      = nfi_local_flush;
 
   serv->ops->nfi_write_mdata    = nfi_local_write_mdata;
   serv->ops->nfi_read_mdata     = nfi_local_read_mdata;
@@ -1033,6 +1035,140 @@ int nfi_local_statfs ( __attribute__((__unused__)) struct nfi_server *serv, __at
   debug_info("[SERV_ID=%d] [NFI_LOCAL] [nfi_local_statfs] >> End\n", serv->id);
 
   return 0;
+}
+
+int nfi_local_preload (struct nfi_server *serv, char *virtual_url, char *storage_path, int block_size, int replication_level )
+{
+  int  ret;
+  char virtual_path[PATH_MAX];
+
+  debug_info("[SERV_ID=%d] [NFI_LOCAL] [nfi_local_preload] >> Begin\n", serv->id);
+
+  // Check arguments...
+  NULL_RET_ERR(serv,         EINVAL);
+  NULL_RET_ERR(virtual_url,  EINVAL);
+  NULL_RET_ERR(storage_path,  EINVAL);
+  nfi_local_keep_connected(serv);
+  NULL_RET_ERR(serv->private_info, EINVAL);
+
+  // Get fields...
+  ret = ParseURL(virtual_url, NULL, NULL, NULL, NULL, NULL, virtual_path);
+  if (ret < 0)
+  {
+    printf("[SERV_ID=%d] [NFI_LOCAL] [nfi_local_preload] ERROR: incorrect url '%s'.\n", serv->id, virtual_url);
+    errno = EINVAL;
+    return -1;
+  }
+
+  debug_info("[SERV_ID=%d] [NFI_LOCAL] [nfi_local_preload] ParseURL(%s)= %s\n", serv->id, virtual_url, virtual_path);
+
+  debug_info("[SERV_ID=%d] [NFI_LOCAL] [nfi_local_preload] nfi_local_preload(%s,%s)\n", serv->id, virtual_path, storage_path);
+
+  // <TODO>
+  printf("Preload function\n");
+  printf("Storage path: %s\n", storage_path);
+  printf("Virtual path: %s\n", virtual_path);
+  printf("block_size: %d\n", block_size);
+  printf("Replication level: %d\n", replication_level);
+
+  char    str_replication_level[1024];
+  sprintf(str_replication_level, "%d", replication_level);
+
+  int pid;
+  char *arguments[] = {"xpn.sh", 
+                        //"--numnodes", "$NHOST",
+                        //"--hostfile", "${HOSTFILE}",
+                        "--source_path", storage_path,
+                        "--xpn_storage_path", virtual_path,
+                        "--replication_level", str_replication_level,
+                        "preload", NULL };
+  
+  pid = fork();
+  switch(pid)
+  {
+      case -1: // error
+          perror ("fork:");
+          return -1;
+      case 0: // child
+          execvp(arguments[0], arguments);
+          perror ("execvp:");
+          break;
+      default: // father
+          while (wait(&ret) != pid);
+  }
+  // </TODO>
+
+  debug_info("[SERV_ID=%d] [NFI_LOCAL] [nfi_local_preload] nfi_local_preload(%s,%s)=%d\n", serv->id, virtual_path, storage_path, ret);
+  debug_info("[NFI_LOCAL] [nfi_local_preload] >> End\n");
+
+  return ret;
+}
+
+int nfi_local_flush (struct nfi_server *serv, char *virtual_url, char *storage_path, int block_size, int replication_level )
+{
+  int  ret;
+  char virtual_path[PATH_MAX];
+
+  debug_info("[SERV_ID=%d] [NFI_LOCAL] [nfi_local_flush] >> Begin\n", serv->id);
+
+  // Check arguments...
+  NULL_RET_ERR(serv,         EINVAL);
+  NULL_RET_ERR(virtual_url,  EINVAL);
+  NULL_RET_ERR(storage_path,  EINVAL);
+  nfi_local_keep_connected(serv);
+  NULL_RET_ERR(serv->private_info, EINVAL);
+
+  // Get fields...
+  ret = ParseURL(virtual_url, NULL, NULL, NULL, NULL, NULL, virtual_path);
+  if (ret < 0)
+  {
+    printf("[SERV_ID=%d] [NFI_LOCAL] [nfi_local_flush] ERROR: incorrect url '%s'.\n", serv->id, virtual_url);
+    errno = EINVAL;
+    return -1;
+  }
+
+  debug_info("[SERV_ID=%d] [NFI_LOCAL] [nfi_local_flush] ParseURL(%s)= %s\n", serv->id, virtual_url, virtual_path);
+
+  debug_info("[SERV_ID=%d] [NFI_LOCAL] [nfi_local_flush] nfi_local_flush(%s,%s)\n", serv->id, virtual_path, storage_path);
+
+  // <TODO>
+  printf("Flush function\n");
+  printf("Storage path: %s\n", storage_path);
+  printf("Virtual path: %s\n", virtual_path);
+  printf("block_size: %d\n", block_size);
+  printf("Replication level: %d\n", replication_level);
+
+  char    str_replication_level[1024];
+  sprintf(str_replication_level, "%d", replication_level);
+
+  int pid;
+  char *arguments[] = {"xpn.sh", 
+                        //"--numnodes", "$NHOST",
+                        //"--hostfile", "${HOSTFILE}",
+                        "--destination_path", storage_path,
+                        "--xpn_storage_path", virtual_path,
+                        "--replication_level", str_replication_level,
+                        "flush", NULL };
+  
+  pid = fork();
+  switch(pid)
+  {
+      case -1: // error
+          perror ("fork:");
+          return -1;
+      case 0: // child
+          execvp(arguments[0], arguments);
+          perror ("execvp:");
+          break;
+      default: // father
+          while (wait(&ret) != pid);
+  }
+  // </TODO>
+
+  debug_info("[SERV_ID=%d] [NFI_LOCAL] [nfi_local_flush] nfi_local_flush(%s,%s)=%d\n", serv->id, virtual_path, storage_path, ret);
+  debug_info("[NFI_LOCAL] [nfi_local_flush] >> End\n");
+
+  return ret;
 }
 
 int nfi_local_read_mdata ( struct nfi_server *server, char *url, struct xpn_metadata *mdata )

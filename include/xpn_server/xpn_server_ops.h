@@ -64,6 +64,8 @@
 
        // FS Operations
        #define XPN_SERVER_STATFS_DIR       60
+       #define XPN_SERVER_PRELOAD          61
+       #define XPN_SERVER_FLUSH            62
 
        // Metadata
        #define XPN_SERVER_READ_MDATA             70
@@ -193,6 +195,28 @@
            struct    st_xpn_server_status status;
        };
 
+       struct st_xpn_server_preload
+       {
+           int  virtual_path_len;
+           int  storage_path_len;
+           int  block_size;
+           int  replication_level;
+           char virtual_path[XPN_PATH_MAX];
+           char storage_path[XPN_PATH_MAX];
+           char opt;
+       };
+
+       struct st_xpn_server_flush
+       {
+           int  virtual_path_len;
+           int  storage_path_len;
+           int  block_size;
+           int  replication_level;
+           char virtual_path[XPN_PATH_MAX];
+           char storage_path[XPN_PATH_MAX];
+           char opt;
+       };
+
        struct st_xpn_server_read_mdata_req
        {
            struct    xpn_metadata mdata;
@@ -237,6 +261,9 @@
                struct st_xpn_server_readdir op_readdir;
                struct st_xpn_server_close op_closedir;
                struct st_xpn_server_path op_rmdir;
+
+               struct st_xpn_server_preload op_preload;
+               struct st_xpn_server_flush op_flush;
 
                struct st_xpn_server_path op_read_mdata;
                struct st_xpn_server_write_mdata op_write_mdata;

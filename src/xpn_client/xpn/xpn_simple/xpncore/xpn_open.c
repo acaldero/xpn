@@ -214,8 +214,10 @@
              XPN_DEBUG_END_ARGS1(path);
              return res;
          }
+
          // Metadata
-         if (mdata == NULL) {
+         if (mdata == NULL)
+         {
              mdata = (struct xpn_metadata * ) malloc(sizeof(struct xpn_metadata));
              if (mdata == NULL)
              {
@@ -223,6 +225,7 @@
              }
              memset(mdata, 0, sizeof(*mdata));
          }
+
          if ((O_DIRECTORY != (flags & O_DIRECTORY)))
          {
              // read metadata only in files
@@ -290,7 +293,9 @@
                  res = -1;
                  goto error_xpn_internal_open;
              }
-         }else{
+         }
+         else
+         {
              // else only open in one
              vfh->nfih[master_dir] = (struct nfi_fhandle *) malloc(sizeof(struct nfi_fhandle));
              if(vfh->nfih[master_dir] == NULL)
@@ -635,7 +640,7 @@
 
          XPN_DEBUG_BEGIN_CUSTOM("%d", fd)
 
-	 // check params
+   // check params
          if (fd < 0)
          {
              errno = EBADF;
@@ -643,7 +648,7 @@
              return -1;
          }
 
-	 // return fstat(fd)
+   // return fstat(fd)
          res = XpnGetAtribFd(fd, sb);
 
          XPN_DEBUG_END_CUSTOM("%d", fd)
@@ -658,7 +663,7 @@
 
          XPN_DEBUG_BEGIN_ARGS1(path);
 
-	 // check params
+   // check params
          if ((path == NULL) || (strlen(path) == 0))
          {
              errno = EINVAL;
@@ -673,7 +678,7 @@
              return -1;
          }
 
-	 // return stat(path)
+   // return stat(path)
          res = XpnGetAbsolutePath(path, abs_path); // this function generates the absolute path
          if (res < 0)
          {
@@ -741,7 +746,7 @@
              return -1;
          }
 
-	 // duplicate descriptor and return OK
+   // duplicate descriptor and return OK
          xpn_file_table[fd2] = xpn_file_table[fd];
          xpn_file_table[fd]->links++;
 
@@ -801,4 +806,3 @@
 
 
   /* ................................................................... */
-

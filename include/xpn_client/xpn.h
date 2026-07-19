@@ -140,7 +140,11 @@
   void        xpn_setlinebuf (FILE *stream);
 
   // xpn_setvbuf.c
-  int     xpn_setvbuf (FILE *stream, char *buf, int mode, size_t size);
+  int         xpn_setvbuf    (FILE *stream, char *buf, int mode, size_t size);
+
+  // xpn_preload_flush.c
+  int         xpn_preload    (const char *virtual_path, const char *storage_path);
+  int         xpn_flush      (const char *virtual_path, const char *storage_path);
 
 
   /* ................................................................... */

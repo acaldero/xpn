@@ -19,8 +19,9 @@
  *
  */
 
-#ifndef _XPN_POLICY_OPEN_H
-#define _XPN_POLICY_OPEN_H
+
+#ifndef _XPN_UTILS_H
+#define _XPN_UTILS_H
 
   #ifdef  __cplusplus
     extern "C" {
@@ -29,26 +30,19 @@
 
   /* ... Include / Inclusion ........................................... */
 
-  #include "xpn_file.h"
-  #include "xpn_policy_rw.h"
-
-
-  /* ... Const / Const ................................................. */
-
-  #define XPN_META_SIZE (4*KB)
+     #include "xpn.h"
+     #include "xpn_file.h"
+     #include "xpn_policy_open.h"
+     #include "xpn_policy_cwd.h"
+     #include "xpn_init.h"
+     #include "xpn_rw.h"
+     #include "base/workers.h"
 
 
   /* ... Functions / Funciones ......................................... */
 
-  void XpnGetURLServer( struct nfi_server *serv, const char *abs_path, char *url_serv);
-
-  int XpnGetServers(int pd, int fd, struct nfi_server **servers);
-
-  int XpnGetFh(struct xpn_metadata *mdata, struct nfi_fhandle **fh,  struct nfi_server *servers,  char *path);
-  int XpnGetFhDir(struct xpn_metadata *mdata, struct nfi_fhandle **fh,  struct nfi_server *servers,  char *path);
-
-  int XpnGetAtribFd   (int fd,      struct stat *st);
-  int XpnGetAtribPath (char * path, struct stat *st);
+     int   xpn_simple_preload ( const char *virtual_path, const char *storage_path ) ;
+     int   xpn_simple_flush   ( const char *virtual_path, const char *storage_path ) ;
 
 
   /* ................................................................... */
