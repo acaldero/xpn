@@ -1,6 +1,6 @@
 
 /*
- *  Copyright 2020-2025 Felix Garcia Carballeira, Diego Camarmas Alonso, Alejandro Calderon Mateos, Luis Miguel Sanchez Garcia, Borja Bergua Guerra
+ *  Copyright 2020-2026 The Expand Team.
  *
  *  This file is part of Expand.
  *
@@ -20,12 +20,12 @@
  */
 
 
-   /* ... Include / Inclusion ........................................... */
+  /* ... Include / Inclusion ........................................... */
 
-      #include "base/urlstr.h"
+     #include "base/urlstr.h"
 
 
-   /* ... Functions / Funciones ......................................... */
+  /* ... Functions / Funciones ......................................... */
 
       int getURLProtocol ( char *url, char *protocol )
       {

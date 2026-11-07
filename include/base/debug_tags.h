@@ -1,6 +1,6 @@
 
 /*
- *  Copyright 2000-2025 Felix Garcia Carballeira, Diego Camarmas Alonso, Alejandro Calderon Mateos, Luis Miguel Sanchez Garcia, Borja Bergua Guerra
+ *  Copyright 2000-2026 The Expand Team.
  *
  *  This file is part of Expand.
  *
@@ -30,27 +30,21 @@
 
   /* ... Include / Inclusion ........................................... */
 
-  #include "all_system.h"
+     #include "all_system.h"
 
 
   /* ... Consts / Constantes ........................................... */
 
-  #define      INFO __LINE__,__FILE__,getpid(),100
-  #define   WARNING __LINE__,__FILE__,getpid(),101
-  #define     ERROR __LINE__,__FILE__,getpid(),102
+     #define      INFO __LINE__,__FILE__,getpid(),100
+     #define   WARNING __LINE__,__FILE__,getpid(),101
+     #define     ERROR __LINE__,__FILE__,getpid(),102
 
-  #define  DEFCON_1 __LINE__,__FILE__,getpid(),110
-  #define  DEFCON_2 __LINE__,__FILE__,getpid(),110
-  #define  DEFCON_3 __LINE__,__FILE__,getpid(),111
-  #define  DEFCON_4 __LINE__,__FILE__,getpid(),111
-  #define  DEFCON_5 __LINE__,__FILE__,getpid(),112
-  #define  DEFCON_6 __LINE__,__FILE__,getpid(),112
-
-
-  /* ... Data structures / Estructuras de datos ........................ */
-
-
-  /* ... Functions / Funciones ......................................... */
+     #define  DEFCON_1 __LINE__,__FILE__,getpid(),110
+     #define  DEFCON_2 __LINE__,__FILE__,getpid(),110
+     #define  DEFCON_3 __LINE__,__FILE__,getpid(),111
+     #define  DEFCON_4 __LINE__,__FILE__,getpid(),111
+     #define  DEFCON_5 __LINE__,__FILE__,getpid(),112
+     #define  DEFCON_6 __LINE__,__FILE__,getpid(),112
 
 
   /* ................................................................... */
@@ -60,3 +54,4 @@
   #endif
 
 #endif
+

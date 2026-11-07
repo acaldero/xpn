@@ -1,6 +1,6 @@
 
 /*
- *  Copyright 2020-2025 Felix Garcia Carballeira, Diego Camarmas Alonso, Elias Del Pozo Puñal, Alejandro Calderon Mateos, Dario Muñoz Muñoz
+ *  Copyright 2020-2026 The Expand Team.
  *
  *  This file is part of Expand.
  *
@@ -32,6 +32,11 @@ void nfi_mq_server_init ( struct nfi_xpn_server *server_aux )
     /*INIT MOSQUITTO CLIENT SIDE */
 
     #ifdef HAVE_MOSQUITTO_H
+
+	#ifndef MOSQ_OPT_TCP_NODELAY
+        #define MOSQ_OPT_TCP_NODELAY 1
+        #endif
+
         int rc = 0;
 
         // server_aux->xpn_mosquitto_mode = atoi(env_mosquitto);
@@ -97,6 +102,7 @@ ssize_t nfi_mq_server_publish ( struct nfi_xpn_server *server_aux, struct nfi_xp
 {
     int ret, diff, cont;
 
+    ret  = -1 ;
     diff = size;
     cont = 0;
 

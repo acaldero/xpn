@@ -1,6 +1,6 @@
 
 /*
- *  Copyright 2020-2025 Felix Garcia Carballeira, Diego Camarmas Alonso, Alejandro Calderon Mateos, Dario Muñoz Muñoz
+ *  Copyright 2020-2026 The Expand Team.
  *
  *  This file is part of Expand.
  *
@@ -20,45 +20,55 @@
  */
 
 
-/* ... Include / Inclusion ........................................... */
+  /* ... Include / Inclusion ........................................... */
 
-#include <dirent.h>
-#include <fcntl.h>
-#include <linux/limits.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
+     #include <dirent.h>
+     #include <fcntl.h>
+     #include <linux/limits.h>
+     #include <stdio.h>
+     #include <stdlib.h>
+     #include <string.h>
+     #include <sys/stat.h>
+     #include <sys/types.h>
+     #include <unistd.h>
 
-#include "mpi.h"
-#include "ns.h"
-#include "xpn/xpn_simple/xpn_policy_rw.h"
 
-/* ... Const / Const ................................................. */
+     #if defined(HAVE_MPI_H)
+     #include "mpi.h"
+     #endif
+     #include "ns.h"
 
-#ifndef _LARGEFILE_SOURCE
-#define _LARGEFILE_SOURCE
-#endif
+     #include "xpn/xpn_simple/xpn_policy_rw.h"
 
-#ifndef _FILE_OFFSET_BITS
-#define _FILE_OFFSET_BITS 64
-#endif
 
-#define HEADER_SIZE   8192
-#define TAG_OFFSET    10
-#define TAG_READ_SIZE 20
-#define TAG_BUF       30
+  /* ... Const / Const ................................................. */
 
-int *rank_actual_to_new = NULL;
-int *rank_actual_to_old = NULL;
-int *rank_new_to_actual = NULL;
-int *rank_old_to_actual = NULL;
-int old_size, new_size;
+     #ifndef _LARGEFILE_SOURCE
+     #define _LARGEFILE_SOURCE
+     #endif
 
-/* ... Functions / Funciones ......................................... */
+     #ifndef _FILE_OFFSET_BITS
+     #define _FILE_OFFSET_BITS 64
+     #endif
 
+     #define HEADER_SIZE   8192
+     #define TAG_OFFSET    10
+     #define TAG_READ_SIZE 20
+     #define TAG_BUF       30
+
+
+  /* ... Global variables / Variables globales ......................... */
+
+     int *rank_actual_to_new = NULL;
+     int *rank_actual_to_old = NULL;
+     int *rank_new_to_actual = NULL;
+     int *rank_old_to_actual = NULL;
+     int old_size, new_size;
+
+
+  /* ... Functions / Funciones ......................................... */
+
+#if defined(HAVE_MPI_H)
 int copy(char *entry, int is_file, int blocksize, int replication_level, int rank, int size) {
     struct stat st;
     int res;
@@ -371,7 +381,8 @@ int list(char *dir_name, int blocksize, int replication_level, int rank, int siz
 
 void calculate_ranks_sizes(char *path_old_hosts, char *path_new_hosts, int *old_rank, int *new_rank) {
     // Get ip and hostname
-    char *hostip = ns_get_host_ip();
+    char hostip[HOST_NAME_MAX];
+    ns_get_host_ip(hostip, HOST_NAME_MAX);
     char hostname[HOST_NAME_MAX];
     ns_get_hostname(hostname);
     int world_rank;
@@ -418,125 +429,139 @@ cleanup_calculate_ranks_sizes:
         fclose(file_new);
     }
 }
+#endif
 
-// TODO: think if MPI_Abort is the desired error handler
-int main(int argc, char *argv[]) {
-    int rank, size, old_rank, new_rank;
-    int replication_level = 0;
-    int blocksize = 524288;
-    double start_time;
-    int res = 0;
-    //
-    // Check arguments...
-    //
-    if (argc < 4) {
-        printf("Usage:\n");
-        printf(
-            " ./%s <xpn local path> <path to old hostfile> <path to new hostfile> <optional destination block size> "
-            "<optional replication level>\n",
-            argv[0]);
-        printf("\n");
-        return -1;
-    }
 
-    if (argc >= 6) {
-        replication_level = atoi(argv[5]);
-    }
-    if (argc >= 5) {
-        blocksize = atoi(argv[4]);
-    }
+#if defined(HAVE_MPI_H)
+  // TODO: think if MPI_Abort is the desired error handler
+  int main(int argc, char *argv[])
+  {
+      int rank, size, old_rank, new_rank;
+      int replication_level = 0;
+      int blocksize = 524288;
+      double start_time;
+      int res = 0;
 
-    MPI_Init(&argc, &argv);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
-    start_time = MPI_Wtime();
-    if (rank == 0) {
-        printf("Rebuild from %s blocksize %d replication_level %d \n", argv[1], blocksize, replication_level);
-    }
-    calculate_ranks_sizes(argv[2], argv[3], &old_rank, &new_rank);
+      //
+      // Check arguments...
+      //
+      if (argc < 4)
+      {
+          printf("Usage:\n");
+          printf(" ./%s <xpn local path> <path to old hostfile> <path to new hostfile> <optional destination block size> "
+                 "<optional replication level>\n", argv[0]);
+          printf("\n");
+          return -1;
+      }
 
-    // Allocate buffers to comunication
-    rank_actual_to_old = malloc(size * sizeof(int));
-    rank_actual_to_new = malloc(size * sizeof(int));
-    rank_old_to_actual = malloc(size * sizeof(int));
-    rank_new_to_actual = malloc(size * sizeof(int));
-    if (rank_actual_to_new == NULL || rank_actual_to_old == NULL || rank_new_to_actual == NULL ||
-        rank_old_to_actual == NULL) {
-        fprintf(stderr, "Error: %s\n", strerror(errno));
-        MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
-    }
+      if (argc >= 6) {
+          replication_level = atoi(argv[5]);
+      }
+      if (argc >= 5) {
+          blocksize = atoi(argv[4]);
+      }
 
-    // Transfer the old and new ranks
-    res = MPI_Allgather(&old_rank, 1, MPI_INT, rank_actual_to_old, 1, MPI_INT, MPI_COMM_WORLD);
-    if (res != MPI_SUCCESS) {
-        fprintf(stderr, "Error: %s\n", strerror(errno));
-        MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
-    }
-    res = MPI_Allgather(&new_rank, 1, MPI_INT, rank_actual_to_new, 1, MPI_INT, MPI_COMM_WORLD);
-    if (res != MPI_SUCCESS) {
-        fprintf(stderr, "Error: %s\n", strerror(errno));
-        MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
-    }
+      MPI_Init(&argc, &argv);
+      MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+      MPI_Comm_size(MPI_COMM_WORLD, &size);
+      start_time = MPI_Wtime();
+      if (rank == 0) {
+          printf("Rebuild from %s blocksize %d replication_level %d \n", argv[1], blocksize, replication_level);
+      }
+      calculate_ranks_sizes(argv[2], argv[3], &old_rank, &new_rank);
 
-    // Remove duplicates
-    for (int i = 0; i < size; i++) {
-        if (rank_actual_to_new[i] != -1 && i != size - 1) {
-            for (int j = i + 1; j < size; j++) {
-                if (rank_actual_to_new[i] == rank_actual_to_new[j]) {
-                    rank_actual_to_new[j] = -1;
-                }
-            }
-        }
-    }
-    for (int i = size - 1; i >= 0; i--) {
-        if (rank_actual_to_old[i] != -1 && i != 0) {
-            for (int j = i - 1; j >= 0; j--) {
-                if (rank_actual_to_old[i] == rank_actual_to_old[j]) {
-                    rank_actual_to_old[j] = -1;
-                }
-            }
-        }
-    }
+      // Allocate buffers to comunication
+      rank_actual_to_old = malloc(size * sizeof(int));
+      rank_actual_to_new = malloc(size * sizeof(int));
+      rank_old_to_actual = malloc(size * sizeof(int));
+      rank_new_to_actual = malloc(size * sizeof(int));
+      if (rank_actual_to_new == NULL || rank_actual_to_old == NULL || rank_new_to_actual == NULL ||
+          rank_old_to_actual == NULL) {
+          fprintf(stderr, "Error: %s\n", strerror(errno));
+          MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+      }
 
-    // Construct maps x to actual
-    for (int i = 0; i < size; i++) {
-        rank_old_to_actual[i] = -1;
-        rank_new_to_actual[i] = -1;
-    }
-    for (int i = 0; i < size; i++) {
-        if (rank_actual_to_old[i] != -1) {
-            rank_old_to_actual[rank_actual_to_old[i]] = i;
-        }
-        if (rank_actual_to_new[i] != -1) {
-            rank_new_to_actual[rank_actual_to_new[i]] = i;
-        }
-    }
+      // Transfer the old and new ranks
+      res = MPI_Allgather(&old_rank, 1, MPI_INT, rank_actual_to_old, 1, MPI_INT, MPI_COMM_WORLD);
+      if (res != MPI_SUCCESS) {
+          fprintf(stderr, "Error: %s\n", strerror(errno));
+          MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+      }
+      res = MPI_Allgather(&new_rank, 1, MPI_INT, rank_actual_to_new, 1, MPI_INT, MPI_COMM_WORLD);
+      if (res != MPI_SUCCESS) {
+          fprintf(stderr, "Error: %s\n", strerror(errno));
+          MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+      }
 
-    char dir_name[PATH_MAX];
-    strncpy(dir_name, argv[1], PATH_MAX - 1);
+      // Remove duplicates
+      for (int i = 0; i < size; i++) {
+          if (rank_actual_to_new[i] != -1 && i != size - 1) {
+              for (int j = i + 1; j < size; j++) {
+                  if (rank_actual_to_new[i] == rank_actual_to_new[j]) {
+                      rank_actual_to_new[j] = -1;
+                  }
+              }
+          }
+      }
+      for (int i = size - 1; i >= 0; i--) {
+          if (rank_actual_to_old[i] != -1 && i != 0) {
+              for (int j = i - 1; j >= 0; j--) {
+                  if (rank_actual_to_old[i] == rank_actual_to_old[j]) {
+                      rank_actual_to_old[j] = -1;
+                  }
+              }
+          }
+      }
 
-    list(dir_name, blocksize, replication_level, rank, size);
+      // Construct maps x to actual
+      for (int i = 0; i < size; i++) {
+          rank_old_to_actual[i] = -1;
+          rank_new_to_actual[i] = -1;
+      }
+      for (int i = 0; i < size; i++) {
+          if (rank_actual_to_old[i] != -1) {
+              rank_old_to_actual[rank_actual_to_old[i]] = i;
+          }
+          if (rank_actual_to_new[i] != -1) {
+              rank_new_to_actual[rank_actual_to_new[i]] = i;
+          }
+      }
 
-    MPI_Barrier(MPI_COMM_WORLD);
-    if (rank == 0) {
-        printf("Rebuild elapsed time %f mseg\n", (MPI_Wtime() - start_time) * 1000);
-    }
+      char dir_name[PATH_MAX];
+      strncpy(dir_name, argv[1], PATH_MAX - 1);
 
-    if (rank_actual_to_new != NULL) {
-        free(rank_actual_to_new);
-    }
-    if (rank_actual_to_old != NULL) {
-        free(rank_actual_to_old);
-    }
-    if (rank_new_to_actual != NULL) {
-        free(rank_new_to_actual);
-    }
-    if (rank_old_to_actual != NULL) {
-        free(rank_old_to_actual);
-    }
+      list(dir_name, blocksize, replication_level, rank, size);
 
-    MPI_Finalize();
-    return res;
-}
+      MPI_Barrier(MPI_COMM_WORLD);
+      if (rank == 0) {
+          printf("Rebuild elapsed time %f mseg\n", (MPI_Wtime() - start_time) * 1000);
+      }
+
+      if (rank_actual_to_new != NULL) {
+          free(rank_actual_to_new);
+      }
+      if (rank_actual_to_old != NULL) {
+          free(rank_actual_to_old);
+      }
+      if (rank_new_to_actual != NULL) {
+          free(rank_new_to_actual);
+      }
+      if (rank_old_to_actual != NULL) {
+          free(rank_old_to_actual);
+      }
+
+      MPI_Finalize();
+
+      return res;
+  }
+#else
+  int main ( int argc, char *argv[] )
+  {
+      printf("ERROR: this utility must to be compiled with MPI support\n") ;
+      return -1 ;
+  }
+#endif
+
 
 /* ................................................................... */
+

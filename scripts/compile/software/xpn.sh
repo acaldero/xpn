@@ -2,7 +2,7 @@
 #set -x
 
 #
-#  Copyright 2020-2025 Felix Garcia Carballeira, Diego Camarmas Alonso, Alejandro Calderon Mateos
+#  Copyright 2020-2026 The Expand Team.
 #
 #  This file is part of Expand.
 #
@@ -85,6 +85,8 @@ ln    -s "${INSTALL_PATH}/xpn/lib64"   "${INSTALL_PATH}/xpn/lib"
 echo " * XPN: compiling and installing..."
 pushd .
 cd "$SRC_PATH"
+export CC=${MPICC_PATH}
+export MPICC=${MPICC_PATH}
 ACLOCAL_FLAGS="-I /usr/share/aclocal/" autoreconf -v -i -s -W all
 ./configure --prefix="${INSTALL_PATH}/xpn" --enable-sck_server --enable-mpi_server="${MPICC_PATH}" 
 make clean

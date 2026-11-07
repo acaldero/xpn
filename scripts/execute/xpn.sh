@@ -1,8 +1,8 @@
 #!/bin/bash
-# set -x
+#set -x
 
 #
-#  Copyright 2020-2025 Felix Garcia Carballeira, Diego Camarmas Alonso, Alejandro Calderon Mateos, Elias del Pozo Puñal, Dario Muñoz Muñoz, Gabriel Sotodosos Morales
+#  Copyright 2020-2026 The Expand Team.
 #
 #  This file is part of Expand.
 #
@@ -147,7 +147,7 @@ start_xpn_servers() {
           line=$(head -n $i "$HOSTFILE" | tail -n 1)
           mpiexec -np       1 \
                   -host "${line}" \
-                  ${BASE_DIR}/../../src/xpn_server/xpn_server -s ${SERVER_TYPE} ${ARGS} &
+                  ${BASE_DIR}/../../src/xpn_server/xpn_server -s ${SERVER_TYPE} -t pool ${ARGS} &
       done
     fi
   fi

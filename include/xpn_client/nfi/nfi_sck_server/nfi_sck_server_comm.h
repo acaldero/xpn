@@ -1,6 +1,6 @@
 
 /*
- *  Copyright 2020-2025 Felix Garcia Carballeira, Diego Camarmas Alonso, Alejandro Calderon Mateos, Dario Muñoz Muñoz
+ *  Copyright 2020-2026 The Expand Team.
  *
  *  This file is part of Expand.
  *
@@ -38,8 +38,10 @@
 
   /* ... Functions / Funciones ......................................... */
   
-    int   nfi_sck_server_comm_connect     ( char * srv_name, char * port_name, int *out_socket );
-    int   nfi_sck_server_comm_disconnect  ( int socket, int keep_connected );
+     int   nfi_sck_server_comm_connect         ( char * srv_name, char * port_name, int *out_socket );
+     int   nfi_sck_ip4_server_comm_connect     ( char * srv_name, char * port_name, int *out_socket );
+     int   nfi_sck_ip6_server_comm_connect     ( char * srv_name, char * port_name, int *out_socket );
+     int   nfi_sck_server_comm_disconnect      ( int socket, int keep_connected );
 
 
   /* ................................................................... */
@@ -49,3 +51,4 @@
   #endif
 
 #endif
+

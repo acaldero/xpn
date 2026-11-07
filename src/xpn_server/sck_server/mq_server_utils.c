@@ -1,6 +1,6 @@
 
 /*
- *  Copyright 2020-2025 Felix Garcia Carballeira, Diego Camarmas Alonso, Elias del Pozo Puñal, Alejandro Calderon Mateos, Dario Muñoz Muñoz
+ *  Copyright 2020-2026 The Expand Team.
  *
  *  This file is part of Expand.
  *
@@ -24,7 +24,6 @@
 
    #include "mq_server_utils.h"
 
-
 /* ... Globals / Globales ............................................ */
 
    CircularQueueMQ queue_mq;
@@ -36,18 +35,18 @@
 double get_time_ops ( void )
 {
     struct timeval  tp;
-    struct timezone tzp;
+    //struct timezone tzp;
 
-    gettimeofday( & tp, & tzp);
+    gettimeofday( & tp, NULL);
     return ((double) tp.tv_sec + .000001 * (double) tp.tv_usec);
 }
 
 double get_time ( void )
 {
     struct timeval  tp;
-    struct timezone tzp;
+    //struct timezone tzp;
 
-    gettimeofday(&tp,&tzp);
+    gettimeofday(&tp, NULL);
     return((double) tp.tv_sec + .000001 * (double) tp.tv_usec);
 }
 
